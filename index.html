@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>相関図作成ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Font Awesomeの読み込み -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- JSZipライブラリの読み込みを追加 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- 外部CSSファイルの読み込み -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- PC利用を促すメッセージ表示エリア -->
+    <div id="mobile-blocker">
+        <div class="message">
+            <p>このツールはPCでの利用を想定しています。</p>
+            <p>お手数ですが、PCブラウザで開いてください。</p>
+        </div>
+    </div>
+    
+    <!-- サイドバー: 操作パネル -->
+    <div id="sidebar">
+        <h1 class="text-2xl font-bold mb-4 text-gray-800">相関図ツール</h1>
+
+        <div class="flex space-x-2 mb-4">
+             <button id="undo-btn" class="btn btn-secondary w-full" title="戻る (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+             <button id="redo-btn" class="btn btn-secondary w-full" title="やり直す (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+        </div>
+        
+        <!-- ショートカットヘルプ -->
+        <details class="mb-4">
+            <summary class="text-sm text-gray-600 cursor-pointer hover:text-gray-800">ショートカットキー</summary>
+            <div class="text-xs text-gray-500 mt-2 space-y-1">
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+Z</kbd> 元に戻す</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+Y</kbd> やり直す</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+A</kbd> 全選択</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+Click</kbd> 複数選択</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+N</kbd> ノード作成</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Ctrl+G</kbd> グループ化</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Delete</kbd> 削除</div>
+                <div><kbd class="bg-gray-100 px-1 rounded">Esc</kbd> 選択解除</div>
+            </div>
+        </details>
+        
+        <div class="control-group">
+            <button id="add-node-btn" class="btn btn-primary w-full" title="ノードを追加 (Ctrl+N)"><i class="fas fa-plus mr-2"></i>ノードを追加</button>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- 選択要素の編集パネル -->
+        <div id="edit-panel" class="hidden">
+            <h2 id="edit-panel-title" class="text-lg font-semibold mb-4 text-gray-700"></h2>
+            
+            <!-- ノード用設定 -->
+            <div id="node-settings" class="hidden space-y-4">
+                <div>
+                    <label for="node-name">名前 (2行まで):</label>
+                    <textarea id="node-name" placeholder="ノード名" rows="2"></textarea>
+                </div>
+                <div>
+                    <label>アイコン画像:</label>
+                    <button id="upload-image-btn" class="btn btn-secondary w-full text-sm !bg-gray-200 !text-gray-700 hover:!bg-gray-300">ファイルを選択...</button>
+                </div>
+                <div>
+                    <label for="node-image-display">画像表示形式:</label>
+                    <select id="node-image-display">
+                        <option value="clip">図形で切り抜く</option>
+                        <option value="raw">画像そのまま (枠線あり)</option>
+                        <option value="none">図形なし (アイコンのみ)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="node-color">枠線の色:</label>
+                    <input type="color" id="node-color" class="h-10">
+                    <div id="node-color-templates" class="flex flex-wrap gap-2 mt-2">
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #ef4444;" data-color="#ef4444"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #f97316;" data-color="#f97316"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #eab308;" data-color="#eab308"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #22c55e;" data-color="#22c55e"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #3b82f6;" data-color="#3b82f6"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #8b5cf6;" data-color="#8b5cf6"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #ec4899;" data-color="#ec4899"></button>
+                        <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #64748b;" data-color="#64748b"></button>
+                    </div>
+                </div>
+                <div>
+                    <label for="node-size">サイズ:</label>
+                    <input type="range" id="node-size" min="20" max="100" step="1">
+                </div>
+                <div>
+                    <label for="node-text-color">文字色:</label>
+                    <input type="color" id="node-text-color" class="h-10">
+                </div>
+                <div>
+                    <label for="node-shape">形状:</label>
+                    <select id="node-shape">
+                        <option value="circle">円形</option>
+                        <option value="rect">四角形</option>
+                        <option value="diamond">菱形</option>
+                        <option value="ellipse">楕円形</option>
+                        <option value="hexagon">六角形</option>
+                        <option value="star">星形</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="node-bg-color">背景色:</label>
+                    <input type="color" id="node-bg-color" class="h-10">
+                </div>
+            </div>
+
+            <!-- 線用設定 -->
+            <div id="link-settings" class="hidden space-y-4">
+                <div>
+                    <label for="link-text">テキスト:</label>
+                    <input type="text" id="link-text" placeholder="関係性など">
+                </div>
+                <div>
+                    <label for="link-color">線の色:</label>
+                    <input type="color" id="link-color" class="h-10">
+                </div>
+                <div>
+                    <label for="link-style">線のスタイル:</label>
+                    <select id="link-style">
+                        <option value="solid">実線</option>
+                        <option value="dashed">点線</option>
+                    </select>
+                </div>
+                 <div>
+                    <label for="link-shape">線の形状:</label>
+                    <select id="link-shape">
+                        <option value="straight">直線</option>
+                        <option value="curved">曲線</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="link-arrow">矢印:</label>
+                    <select id="link-arrow">
+                        <option value="none">なし</option>
+                        <option value="to">片方向 (→)</option>
+                        <option value="from">片方向 (←)</option>
+                        <option value="both">双方向 (↔)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="link-text-color">ラベル文字色:</label>
+                    <input type="color" id="link-text-color" class="h-10">
+                </div>
+            </div>
+
+            <!-- グループ用設定 -->
+            <div id="group-settings" class="hidden space-y-4">
+                <div>
+                    <label for="group-name">グループ名:</label>
+                    <input type="text" id="group-name" placeholder="グループ名">
+                </div>
+                <div>
+                    <label for="group-color">グループの色:</label>
+                    <input type="color" id="group-color" class="h-10">
+                </div>
+                <div id="add-node-to-group-section" class="pt-2">
+                    <label for="add-node-to-group-select" class="text-sm font-medium">グループにノードを追加:</label>
+                    <div class="flex space-x-2 mt-1">
+                        <select id="add-node-to-group-select" class="flex-grow"></select>
+                        <button id="add-node-to-group-btn" class="btn btn-secondary !px-3" title="追加"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <p id="add-node-to-group-message" class="text-xs text-gray-500 mt-1"></p>
+                </div>
+            </div>
+
+            <div class="mt-6">
+                <button id="delete-btn" class="btn btn-danger w-full" title="選択項目を削除 (Delete)"><i class="fas fa-trash-alt mr-2"></i>選択項目を削除</button>
+            </div>
+        </div>
+
+        <div id="no-selection-panel">
+            <p class="text-gray-500 text-center">要素を選択して編集します。</p>
+        </div>
+
+        <div class="mt-auto pt-6 space-y-2">
+            <h2 class="text-lg font-semibold mb-2 text-gray-700">操作</h2>
+            <button id="group-btn" class="btn btn-secondary w-full" title="選択をグループ化 (Ctrl+G)"><i class="fas fa-object-group mr-2"></i>選択をグループ化</button>
+            
+            <h2 class="text-lg font-semibold mt-4 mb-2 text-gray-700">プロジェクト</h2>
+            <div class="space-y-2">
+                <button id="import-project-btn" class="btn btn-secondary w-full"><i class="fas fa-file-import mr-2"></i>プロジェクトを読み込む</button>
+                <button id="export-project-btn" class="btn btn-secondary w-full"><i class="fas fa-file-archive mr-2"></i>プロジェクトを保存 (ZIP)</button>
+            </div>
+
+            <h2 class="text-lg font-semibold mt-4 mb-2 text-gray-700">エクスポート</h2>
+            <button id="export-png-btn" class="btn btn-secondary w-full"><i class="fas fa-file-image mr-2"></i>PNGで保存</button>
+
+            <div class="border-t pt-4 mt-4 text-xs text-gray-500 space-y-3">
+                <details>
+                    <summary class="cursor-pointer hover:text-gray-700 font-medium">更新履歴</summary>
+                        <li><strong>2025/06/27</strong> 初期リリース</li>
+                    </ul>
+                </details>
+                <div>
+                    作者: <a href="https://x.com/qxoiUioxp" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">しるべ(@qxoiUioxp)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- メインの描画エリア -->
+    <div id="canvas-container">
+        <svg id="canvas"></svg>
+    </div>
+
+    <!-- 右クリックメニュー -->
+    <div id="context-menu"></div>
+
+    <!-- ファイルアップロード用の非表示Input -->
+    <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+    <!-- プロジェクトインポート用の非表示Inputを追加 -->
+    <input type="file" id="project-import-input" accept=".zip" style="display: none;">
+
+    <!-- 外部JavaScriptファイルの読み込み -->
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+/* 基本的なスタイル */
+body {
+    font-family: 'Inter', 'Noto Sans JP', sans-serif;
+    overflow: hidden;
+    display: flex;
+    height: 100vh;
+    background-color: #f0f2f5;
+}
+#canvas-container {
+    flex-grow: 1;
+    position: relative;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+svg {
+    width: 100%;
+    height: 100%;
+    cursor: default;
+    user-select: none;
+}
+svg.panning {
+    cursor: grabbing;
+}
+.node {
+    cursor: move;
+    transition: filter 0.2s;
+}
+.node:hover, .node.selected {
+    filter: drop-shadow(0 0 5px rgba(0, 123, 255, 0.7));
+}
+.node .connector {
+    fill: #007bff;
+    stroke: white;
+    stroke-width: 2px;
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.group .connector {
+    fill: #ffc107; /* グループの色に合わせる */
+    stroke: white;
+    stroke-width: 2px;
+    cursor: crosshair;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.node:hover .connector, .group:hover .connector {
+    opacity: 1;
+}
+/* 文字に縁取りを追加 */
+.node-name tspan, .link-label-text {
+    stroke: white;
+    stroke-width: 3px;
+    paint-order: stroke;
+    stroke-linejoin: round;
+}
+.link-group:hover .link {
+     stroke-width: 4;
+}
+.link {
+    transition: stroke 0.2s;
+    cursor: pointer;
+}
+.link-group.selected .link {
+     filter: drop-shadow(0 0 2px rgba(0, 123, 255, 0.9));
+}
+.link-label {
+    font-size: 13px;
+    fill: #333;
+    pointer-events: none;
+}
+.group {
+    cursor: move;
+    transition: filter 0.2s;
+}
+.group .group-rect {
+    stroke-width: 2px;
+    rx: 15;
+    ry: 15;
+}
+.group:hover, .group.selected {
+    filter: drop-shadow(0 0 5px rgba(255, 193, 7, 0.7));
+}
+.group-label {
+    font-size: 14px;
+    font-weight: bold;
+    /* text-anchor: middle; */ /* 左寄せに変更 */
+    pointer-events: none;
+}
+.selection-box {
+    fill: rgba(0, 123, 255, 0.1);
+    stroke: rgba(0, 123, 255, 0.5);
+    stroke-width: 1px;
+    stroke-dasharray: 4 2;
+}
+#sidebar {
+    width: 300px;
+    background-color: white;
+    box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+    padding: 1.5rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+.control-group {
+    margin-bottom: 1rem;
+}
+.control-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #4a5568;
+}
+.control-group input, .control-group select, .control-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e0;
+    border-radius: 0.375rem;
+}
+/* textareaのスタイルを追加 */
+.control-group textarea {
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.btn {
+    display: inline-flex; /* アイコンとテキストを中央揃えにするため */
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    color: white;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+.btn:disabled {
+    background-color: #9ca3af;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+.btn-primary { background-color: #4f46e5; }
+.btn-primary:hover:not(:disabled) { background-color: #4338ca; }
+.btn-secondary { background-color: #64748b; }
+.btn-secondary:hover:not(:disabled) { background-color: #475569; }
+.btn-danger { background-color: #dc2626; }
+.btn-danger:hover:not(:disabled) { background-color: #b91c1c; }
+#context-menu {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 0.5rem;
+    z-index: 1000;
+    display: none;
+}
+#context-menu button {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    text-align: left;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: 0.25rem;
+}
+#context-menu button:hover {
+    background-color: #f1f5f9;
+}
+#add-node-to-group-select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* モバイルブロッカーのスタイル */
+#mobile-blocker {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(25, 35, 50, 0.95);
+    color: white;
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 1.1rem;
+    line-height: 1.7;
+}
+
+#mobile-blocker .message {
+    padding: 2rem;
+}
+
+
+/* ブロッカー表示用のスタイル */
+@media (max-width: 768px) {
+    /* ブロッカー以外の全要素を非表示にする */
+    body > *:not(#mobile-blocker) {
+        display: none !important;
+    }
+    /* ブロッカーを表示する */
+    #mobile-blocker {
+        display: flex;
+    }
+}
