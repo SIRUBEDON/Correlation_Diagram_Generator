@@ -47,6 +47,10 @@
     const exportProjectBtn = document.getElementById('export-project-btn');
     const importProjectBtn = document.getElementById('import-project-btn');
     const projectImportInput = document.getElementById('project-import-input');
+    const zoomInBtn = document.getElementById('zoom-in-btn');
+    const zoomOutBtn = document.getElementById('zoom-out-btn');
+    const zoomSlider = document.getElementById('zoom-slider');
+    const zoomLevel = document.getElementById('zoom-level');
     
     // --- 状態管理 ---
     let state = {
@@ -92,6 +96,12 @@
         const pt = svg.createSVGPoint();
         pt.x = clientX;
         pt.y = clientY;
+        // 修正: レイヤーの変換行列を考慮してワールド座標を取得する
+        const ctm = nodeLayer.getScreenCTM();
+        if (ctm) {
+            return pt.matrixTransform(ctm.inverse());
+        }
+        // フォールバックとして元のロジックを残す
         return pt.matrixTransform(svg.getScreenCTM().inverse());
     };
     
@@ -194,6 +204,13 @@
         renderLinks();
         updateSidebar();
         updateUndoRedoButtons();
+        updateZoomControls();
+    }
+
+    function updateZoomControls() {
+        if (!zoomSlider || !zoomLevel) return;
+        zoomSlider.value = state.view.k;
+        zoomLevel.textContent = `${Math.round(state.view.k * 100)}%`;
     }
 
     function renderNodes() {
@@ -692,7 +709,9 @@ function updateSidebar() {
     } else if (node) {
         editPanelTitle.textContent = 'ノード設定';
         nodeSettings.classList.remove('hidden');
-        nodeNameInput.value = node.name;
+        if (document.activeElement !== nodeNameInput) {
+            nodeNameInput.value = node.name;
+        }
         nodeColorInput.value = node.color;
         nodeSizeInput.value = node.size;
         nodeTextColorInput.value = node.textColor || '#333333';
@@ -1006,6 +1025,19 @@ function handleSidebarChange(e) {
         const pos = getSvgPoint(e.clientX, e.clientY);
         const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
         state.view.k = Math.max(0.1, Math.min(5, state.view.k * zoomFactor));
+        state.view.x = pos.x - (pos.x - state.view.x) * zoomFactor;
+        state.view.y = pos.y - (pos.y - state.view.y) * zoomFactor;
+        render();
+    }
+
+    function setZoom(newScale, pivotX, pivotY) {
+        const currentScale = state.view.k;
+        const newK = Math.max(0.1, Math.min(5, newScale));
+        const zoomFactor = newK / currentScale;
+        
+        const pos = getSvgPoint(pivotX, pivotY);
+
+        state.view.k = newK;
         state.view.x = pos.x - (pos.x - state.view.x) * zoomFactor;
         state.view.y = pos.y - (pos.y - state.view.y) * zoomFactor;
         render();
@@ -1353,6 +1385,16 @@ function handleSidebarChange(e) {
         exportProjectBtn.addEventListener('click', exportProject);
         importProjectBtn.addEventListener('click', () => projectImportInput.click());
         projectImportInput.addEventListener('change', importProject);
+
+        zoomInBtn.addEventListener('click', () => {
+            setZoom(state.view.k * 1.2, window.innerWidth / 2, window.innerHeight / 2);
+        });
+        zoomOutBtn.addEventListener('click', () => {
+            setZoom(state.view.k / 1.2, window.innerWidth / 2, window.innerHeight / 2);
+        });
+        zoomSlider.addEventListener('input', (e) => {
+            setZoom(parseFloat(e.target.value), window.innerWidth / 2, window.innerHeight / 2);
+        });
 
         sidebar.addEventListener('input', (e) => {
             handleSidebarChange(e);
