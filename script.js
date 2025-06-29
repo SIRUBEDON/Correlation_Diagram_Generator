@@ -19,6 +19,9 @@
     const nodeShapeInput = document.getElementById('node-shape');
     const nodeBgColorInput = document.getElementById('node-bg-color');
     const nodeImageDisplayInput = document.getElementById('node-image-display');
+    const nodeColorCodeInput = document.getElementById('node-color-code');
+    const nodeTextColorCodeInput = document.getElementById('node-text-color-code');
+    const nodeBgColorCodeInput = document.getElementById('node-bg-color-code');
     
     const linkTextInput = document.getElementById('link-text');
     const linkColorInput = document.getElementById('link-color');
@@ -26,9 +29,12 @@
     const linkShapeInput = document.getElementById('link-shape');
     const linkArrowInput = document.getElementById('link-arrow');
     const linkTextColorInput = document.getElementById('link-text-color');
+    const linkColorCodeInput = document.getElementById('link-color-code');
+    const linkTextColorCodeInput = document.getElementById('link-text-color-code');
 
     const groupNameInput = document.getElementById('group-name');
     const groupColorInput = document.getElementById('group-color');
+    const groupColorCodeInput = document.getElementById('group-color-code');
     const addNodeToGroupSection = document.getElementById('add-node-to-group-section');
     const addNodeToGroupSelect = document.getElementById('add-node-to-group-select');
     const addNodeToGroupBtn = document.getElementById('add-node-to-group-btn');
@@ -134,6 +140,13 @@
             maxY = Math.max(maxY, node.y + effectiveHeight);
         });
         return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    };
+
+    const syncColorInputs = (colorPicker, textInput, colorValue) => {
+        colorPicker.value = colorValue;
+        if (document.activeElement !== textInput) {
+            textInput.value = colorValue;
+        }
     };
     
     // --- ローカルストレージ関数 ---
@@ -712,26 +725,26 @@ function updateSidebar() {
         if (document.activeElement !== nodeNameInput) {
             nodeNameInput.value = node.name;
         }
-        nodeColorInput.value = node.color;
+        syncColorInputs(nodeColorInput, nodeColorCodeInput, node.color);
         nodeSizeInput.value = node.size;
-        nodeTextColorInput.value = node.textColor || '#333333';
+        syncColorInputs(nodeTextColorInput, nodeTextColorCodeInput, node.textColor || '#333333');
         nodeShapeInput.value = node.shape || 'circle';
-        nodeBgColorInput.value = node.backgroundColor || '#ffffff';
+        syncColorInputs(nodeBgColorInput, nodeBgColorCodeInput, node.backgroundColor || '#ffffff');
         nodeImageDisplayInput.value = node.imageDisplayMode || 'clip';
     } else if (link) {
         editPanelTitle.textContent = '線設定';
         linkSettings.classList.remove('hidden');
         linkTextInput.value = link.text;
-        linkColorInput.value = link.color;
+        syncColorInputs(linkColorInput, linkColorCodeInput, link.color);
         linkStyleInput.value = link.style;
         linkShapeInput.value = link.shape;
         linkArrowInput.value = link.arrow;
-        linkTextColorInput.value = link.textColor || '#333333';
+        syncColorInputs(linkTextColorInput, linkTextColorCodeInput, link.textColor || '#333333');
     } else if (group) {
         editPanelTitle.textContent = 'グループ設定';
         groupSettings.classList.remove('hidden');
         groupNameInput.value = group.name;
-        groupColorInput.value = group.color;
+        syncColorInputs(groupColorInput, groupColorCodeInput, group.color);
 
         const nodesInGroup = new Set(group.nodeIds);
         const availableNodes = state.diagram.nodes.filter(n => !nodesInGroup.has(n.id));
@@ -1011,6 +1024,15 @@ function handleSidebarChange(e) {
             group.color = groupColorInput.value;
         }
     });
+
+    // カラーコード入力欄からの変更を反映
+    if (targetElement.classList.contains('color-code-input')) {
+        const colorPicker = targetElement.previousElementSibling;
+        if (/^#[0-9a-fA-F]{6}$/.test(targetElement.value)) {
+            colorPicker.value = targetElement.value;
+            colorPicker.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    }
 
     if (targetElement.id !== 'add-node-to-group-select') {
         render();
@@ -1365,7 +1387,9 @@ function handleSidebarChange(e) {
         
         nodeColorTemplates.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' && e.target.dataset.color) {
-                nodeColorInput.value = e.target.dataset.color;
+                const color = e.target.dataset.color;
+                nodeColorInput.value = color;
+                nodeColorCodeInput.value = color;
                 nodeColorInput.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });

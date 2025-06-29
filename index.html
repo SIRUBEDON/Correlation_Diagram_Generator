@@ -82,7 +82,10 @@
                 </div>
                 <div>
                     <label for="node-color">枠線の色:</label>
-                    <input type="color" id="node-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="node-color" class="h-10">
+                        <input type="text" id="node-color-code" class="color-code-input" placeholder="#ef4444">
+                    </div>
                     <div id="node-color-templates" class="flex flex-wrap gap-2 mt-2">
                         <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #ef4444;" data-color="#ef4444"></button>
                         <button class="w-6 h-6 rounded-full border border-gray-300" style="background-color: #f97316;" data-color="#f97316"></button>
@@ -100,7 +103,10 @@
                 </div>
                 <div>
                     <label for="node-text-color">文字色:</label>
-                    <input type="color" id="node-text-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="node-text-color" class="h-10">
+                        <input type="text" id="node-text-color-code" class="color-code-input" placeholder="#333333">
+                    </div>
                 </div>
                 <div>
                     <label for="node-shape">形状:</label>
@@ -115,7 +121,10 @@
                 </div>
                 <div>
                     <label for="node-bg-color">背景色:</label>
-                    <input type="color" id="node-bg-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="node-bg-color" class="h-10">
+                        <input type="text" id="node-bg-color-code" class="color-code-input" placeholder="#ffffff">
+                    </div>
                 </div>
             </div>
 
@@ -127,7 +136,10 @@
                 </div>
                 <div>
                     <label for="link-color">線の色:</label>
-                    <input type="color" id="link-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="link-color" class="h-10">
+                        <input type="text" id="link-color-code" class="color-code-input" placeholder="#333333">
+                    </div>
                 </div>
                 <div>
                     <label for="link-style">線のスタイル:</label>
@@ -154,7 +166,10 @@
                 </div>
                 <div>
                     <label for="link-text-color">ラベル文字色:</label>
-                    <input type="color" id="link-text-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="link-text-color" class="h-10">
+                        <input type="text" id="link-text-color-code" class="color-code-input" placeholder="#333333">
+                    </div>
                 </div>
             </div>
 
@@ -166,7 +181,10 @@
                 </div>
                 <div>
                     <label for="group-color">グループの色:</label>
-                    <input type="color" id="group-color" class="h-10">
+                    <div class="color-input-wrapper">
+                        <input type="color" id="group-color" class="h-10">
+                        <input type="text" id="group-color-code" class="color-code-input" placeholder="#ffc107">
+                    </div>
                 </div>
                 <div id="add-node-to-group-section" class="pt-2">
                     <label for="add-node-to-group-select" class="text-sm font-medium">グループにノードを追加:</label>

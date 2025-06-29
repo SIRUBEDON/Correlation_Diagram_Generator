@@ -183,6 +183,20 @@ svg.panning {
     border: 1px solid #cbd5e0;
     border-radius: 0.375rem;
 }
+.color-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.color-input-wrapper input[type="color"] {
+    flex-shrink: 0;
+    width: 4rem;
+    padding: 0.25rem;
+}
+.color-code-input {
+    font-family: monospace;
+    font-size: 0.875rem;
+}
 /* textareaのスタイルを追加 */
 .control-group textarea {
     resize: vertical;
