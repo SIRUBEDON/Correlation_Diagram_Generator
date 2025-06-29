@@ -953,10 +953,22 @@ function updateSidebar() {
         }
         
         if (selectionBox) {
-            const { x, y, width, height } = selectionBox.rect.getBBox();
+            const screenRect = selectionBox.rect.getBoundingClientRect();
+            const topLeft = getSvgPoint(screenRect.left, screenRect.top);
+            const bottomRight = getSvgPoint(screenRect.right, screenRect.bottom);
+            const selectionRect = {
+                x: Math.min(topLeft.x, bottomRight.x),
+                y: Math.min(topLeft.y, bottomRight.y),
+                width: Math.abs(topLeft.x - bottomRight.x),
+                height: Math.abs(topLeft.y - bottomRight.y)
+            };
+
             state.diagram.nodes.forEach(node => {
                 const nodeBBox = { x: node.x - node.size, y: node.y - node.size, width: node.size * 2, height: node.size * 2 };
-                if (x < nodeBBox.x + nodeBBox.width && x + width > nodeBBox.x && y < nodeBBox.y + nodeBBox.height && y + height > nodeBBox.y) {
+                if (selectionRect.x < nodeBBox.x + nodeBBox.width &&
+                    selectionRect.x + selectionRect.width > nodeBBox.x &&
+                    selectionRect.y < nodeBBox.y + nodeBBox.height &&
+                    selectionRect.y + selectionRect.height > nodeBBox.y) {
                      state.selectedItems.add(node.id);
                 }
             });
