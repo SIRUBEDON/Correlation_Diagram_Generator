@@ -28,6 +28,10 @@
     <div id="sidebar">
         <h1 class="text-2xl font-bold mb-4 text-gray-800">相関図ツール</h1>
 
+        <div class="text-sm text-gray-600 mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p>ノードや線、グループを自由に追加・編集して、人物相関図や組織図などを簡単に作成できるツールです。</p>
+        </div>
+
         <div class="flex space-x-2 mb-4">
              <button id="undo-btn" class="btn btn-secondary w-full" title="戻る (Ctrl+Z)"><i class="fas fa-undo"></i></button>
              <button id="redo-btn" class="btn btn-secondary w-full" title="やり直す (Ctrl+Y)"><i class="fas fa-redo"></i></button>
@@ -212,6 +216,13 @@
     <!-- メインの描画エリア -->
     <div id="canvas-container">
         <svg id="canvas"></svg>
+        <!-- ズームコントロールを追加 -->
+        <div id="zoom-controls">
+            <button id="zoom-out-btn" title="縮小"><i class="fas fa-search-minus"></i></button>
+            <input type="range" id="zoom-slider" min="0.1" max="5" step="0.01" value="1">
+            <button id="zoom-in-btn" title="拡大"><i class="fas fa-search-plus"></i></button>
+            <span id="zoom-level">100%</span>
+        </div>
     </div>
 
     <!-- 右クリックメニュー -->
