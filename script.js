@@ -49,6 +49,12 @@
     const exportPngBtn = document.getElementById('export-png-btn');
     const contextMenu = document.getElementById('context-menu');
     const imageUploadInput = document.getElementById('image-upload-input');
+    const editImageBtn = document.getElementById('edit-image-btn');
+    const imageEditorModal = document.getElementById('image-editor-modal');
+    const imageEditorPreview = document.getElementById('image-editor-preview');
+    const imageZoomSlider = document.getElementById('image-zoom-slider');
+    const saveImageEditBtn = document.getElementById('save-image-edit-btn');
+    const cancelImageEditBtn = document.getElementById('cancel-image-edit-btn');
     
     const exportProjectBtn = document.getElementById('export-project-btn');
     const importProjectBtn = document.getElementById('import-project-btn');
@@ -77,6 +83,7 @@
     let selectionBox = null;
     let lastMousePos = { x: 0, y: 0 };
     let targetNodeIdForImageUpload = null;
+    let activeImageEditor = null;
     
     // --- SVG要素のグループ ---
     const groupLayer = document.createElementNS("http://www.w3.org/2000/svg", 'g');
@@ -345,6 +352,13 @@
                     image.setAttribute('x', -imgSize / 2); image.setAttribute('y', -imgSize / 2);
                     image.setAttribute('width', imgSize); image.setAttribute('height', imgSize);
                     image.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+
+                    if (node.imageTransform) {
+                        const { scale, offsetX, offsetY } = node.imageTransform;
+                        // SVGのtransform属性はCSSと異なり、単位をつけない
+                        const transform = `translate(${offsetX}, ${offsetY}) scale(${scale})`;
+                        image.setAttribute('transform', transform);
+                    }
                 } else { // raw, none
                     const imgSize = size * 2;
                     image.setAttribute('x', -size); image.setAttribute('y', -size);
@@ -751,6 +765,7 @@ function updateSidebar() {
         nodeShapeInput.value = node.shape || 'circle';
         syncColorInputs(nodeBgColorInput, nodeBgColorCodeInput, node.backgroundColor || '#ffffff');
         nodeImageDisplayInput.value = node.imageDisplayMode || 'clip';
+        editImageBtn.disabled = !node.imageUrl;
     } else if (link) {
         editPanelTitle.textContent = '線設定';
         linkSettings.classList.remove('hidden');
@@ -1253,7 +1268,8 @@ function handleSidebarChange(e) {
         const newNode = {
             id, x: viewCenter.x, y: viewCenter.y, name: `ノード`,
             imageUrl: null, color: '#4f46e5', size: 40, textColor: '#333333',
-            shape: 'circle', backgroundColor: '#ffffff', imageDisplayMode: 'clip'
+            shape: 'circle', backgroundColor: '#ffffff', imageDisplayMode: 'clip',
+            imageTransform: { scale: 1, offsetX: 0, offsetY: 0 }
         };
         state.diagram.nodes.push(newNode);
         log('INFO', 'ノードを作成しました。', newNode);
@@ -1422,6 +1438,82 @@ function handleSidebarChange(e) {
         return`rgba(${+r},${+g},${+b},${alpha})`;
     }
 
+    // --- 画像編集モーダル ---
+    function openImageEditor() {
+        const nodeId = [...state.selectedItems].find(id => state.diagram.nodes.some(n => n.id === id));
+        if (!nodeId) return;
+
+        const node = state.diagram.nodes.find(n => n.id === nodeId);
+        if (!node || !node.imageUrl) return;
+
+        activeImageEditor = {
+            nodeId: nodeId,
+            transform: JSON.parse(JSON.stringify(node.imageTransform || { scale: 1, offsetX: 0, offsetY: 0 })),
+            previewElement: null,
+            isDragging: false,
+            lastMousePos: { x: 0, y: 0 }
+        };
+
+        imageEditorPreview.innerHTML = '';
+        const previewImage = document.createElement('div');
+        previewImage.className = 'preview-image';
+        previewImage.style.backgroundImage = `url(${node.imageUrl})`;
+        imageEditorPreview.appendChild(previewImage);
+        activeImageEditor.previewElement = previewImage;
+
+        imageZoomSlider.value = activeImageEditor.transform.scale;
+        updateImagePreview();
+
+        imageEditorModal.classList.remove('hidden');
+    }
+
+    function closeImageEditor() {
+        imageEditorModal.classList.add('hidden');
+        activeImageEditor = null;
+    }
+
+    function saveImageEdit() {
+        if (!activeImageEditor) return;
+        const node = state.diagram.nodes.find(n => n.id === activeImageEditor.nodeId);
+        if (node) {
+            node.imageTransform = { ...activeImageEditor.transform };
+            saveState('image edit');
+            render();
+        }
+        closeImageEditor();
+    }
+
+    function updateImagePreview() {
+        if (!activeImageEditor || !activeImageEditor.previewElement) return;
+        const { scale, offsetX, offsetY } = activeImageEditor.transform;
+        activeImageEditor.previewElement.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+    }
+
+    function handleImageEditorMouseDown(e) {
+        if (!activeImageEditor) return;
+        e.preventDefault();
+        activeImageEditor.isDragging = true;
+        activeImageEditor.lastMousePos = { x: e.clientX, y: e.clientY };
+        imageEditorPreview.style.cursor = 'grabbing';
+    }
+
+    function handleImageEditorMouseMove(e) {
+        if (!activeImageEditor || !activeImageEditor.isDragging) return;
+        e.preventDefault();
+        const dx = e.clientX - activeImageEditor.lastMousePos.x;
+        const dy = e.clientY - activeImageEditor.lastMousePos.y;
+        activeImageEditor.transform.offsetX += dx;
+        activeImageEditor.transform.offsetY += dy;
+        activeImageEditor.lastMousePos = { x: e.clientX, y: e.clientY };
+        updateImagePreview();
+    }
+
+    function handleImageEditorMouseUp(e) {
+        if (!activeImageEditor || !activeImageEditor.isDragging) return;
+        activeImageEditor.isDragging = false;
+        imageEditorPreview.style.cursor = 'grab';
+    }
+
     function init() {
         log('INFO', 'アプリケーションを初期化しています...');
         addNodeBtn.addEventListener('click', createNode);
@@ -1435,6 +1527,19 @@ function handleSidebarChange(e) {
             const selectedNodeId = [...state.selectedItems].find(id => state.diagram.nodes.some(n => n.id === id));
             if (selectedNodeId) { targetNodeIdForImageUpload = selectedNodeId; imageUploadInput.click(); }
         });
+        
+        editImageBtn.addEventListener('click', openImageEditor);
+        saveImageEditBtn.addEventListener('click', saveImageEdit);
+        cancelImageEditBtn.addEventListener('click', closeImageEditor);
+        imageZoomSlider.addEventListener('input', () => {
+            if (activeImageEditor) {
+                activeImageEditor.transform.scale = parseFloat(imageZoomSlider.value);
+                updateImagePreview();
+            }
+        });
+        imageEditorPreview.addEventListener('mousedown', handleImageEditorMouseDown);
+        window.addEventListener('mousemove', handleImageEditorMouseMove);
+        window.addEventListener('mouseup', handleImageEditorMouseUp);
         
         nodeColorTemplates.addEventListener('click', (e) => {
             if (e.target.tagName === 'BUTTON' && e.target.dataset.color) {
