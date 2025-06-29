@@ -211,6 +211,7 @@
         groupLayer.setAttribute('transform', transform);
         linkLayer.setAttribute('transform', transform);
         nodeLayer.setAttribute('transform', transform);
+        selectionBoxLayer.setAttribute('transform', transform);
 
         renderNodes();
         renderGroups();
