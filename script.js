@@ -97,6 +97,25 @@
 
 
     // --- ヘルパー関数 ---
+    const LOG_LEVELS = {
+        DEBUG: { color: '#9e9e9e', prefix: 'DEBUG' },
+        INFO: { color: '#2196f3', prefix: 'INFO ' },
+        WARN: { color: '#ffc107', prefix: 'WARN ' },
+        ERROR: { color: '#f44336', prefix: 'ERROR' }
+    };
+
+    function log(level, message, ...data) {
+        const config = LOG_LEVELS[level] || LOG_LEVELS.INFO;
+        const timestamp = new Date().toLocaleTimeString('ja-JP', { hour12: false });
+        
+        console.log(
+            `%c[${timestamp}] ${config.prefix}:`,
+            `color: ${config.color}; font-weight: bold;`,
+            message,
+            ...data
+        );
+    }
+
     const getNextId = () => `id_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
     const getSvgPoint = (clientX, clientY) => {
         const pt = svg.createSVGPoint();
@@ -169,7 +188,7 @@
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         } catch (error) {
-            console.warn('ローカルストレージへの保存に失敗しました:', error);
+            log('ERROR', 'ローカルストレージへの保存に失敗しました。', error);
         }
     }
     
@@ -181,7 +200,7 @@
                 if (data.diagram) {
                     const hasPlaceholder = data.diagram.nodes.some(n => n.imageUrl === 'local-image-placeholder');
                     if (hasPlaceholder) {
-                        console.log("ローカルストレージから復元しました。画像はプロジェクトファイルから復元してください。");
+                        log('WARN', "ローカルストレージから復元しました。画像はプロジェクトファイルから復元してください。");
                     }
                     
                     state.diagram = data.diagram;
@@ -200,7 +219,7 @@
                 }
             }
         } catch (error) {
-            console.warn('ローカルストレージからの読み込みに失敗しました:', error);
+            log('ERROR', 'ローカルストレージからの読み込みに失敗しました。', error);
         }
         return false;
     }
@@ -773,12 +792,14 @@ function updateSidebar() {
     }
 }
     // --- 履歴管理 ---
-    function saveState(shouldSaveToLocalStorage = true) {
+    function saveState(actionName = 'unknown', shouldSaveToLocalStorage = true) {
         state.redoStack = [];
         state.history.push(JSON.parse(JSON.stringify(state.diagram)));
         if (state.history.length > 50) state.history.shift();
         updateUndoRedoButtons();
         
+        log('DEBUG', `状態を保存しました (Action: ${actionName})`, { historySize: state.history.length });
+
         if (shouldSaveToLocalStorage) {
             saveToLocalStorage();
         }
@@ -786,6 +807,7 @@ function updateSidebar() {
 
     function undo() {
         if (state.history.length > 1) {
+            log('INFO', '操作を元に戻します (Undo)');
             const currentState = state.history.pop();
             state.redoStack.push(currentState);
             const prevState = state.history[state.history.length - 1];
@@ -798,6 +820,7 @@ function updateSidebar() {
 
     function redo() {
         if (state.redoStack.length > 0) {
+            log('INFO', '操作をやり直します (Redo)');
             const nextState = state.redoStack.pop();
             state.history.push(nextState);
             state.diagram = JSON.parse(JSON.stringify(nextState));
@@ -936,7 +959,7 @@ function updateSidebar() {
     }
 
     function handlePointerUp(e, isTouch = false) {
-        if (activeDrag?.type === 'element') saveState();
+        if (activeDrag?.type === 'element') saveState('element drag');
 
         if (activeLink) {
             const clientX = isTouch ? e.changedTouches[0].clientX : e.clientX;
@@ -1052,7 +1075,7 @@ function handleSidebarChange(e) {
     }
 }    
     const debouncedHandleSidebarChange = debounce(() => {
-        saveState();
+        saveState('sidebar change');
     }, 500);
 
     function handleWheel(e) {
@@ -1181,7 +1204,7 @@ function handleSidebarChange(e) {
                 if (node) {
                     node.imageUrl = event.target.result;
                     render();
-                    saveState();
+                    saveState('image upload');
                 }
             };
             reader.readAsDataURL(file);
@@ -1227,11 +1250,13 @@ function handleSidebarChange(e) {
     function createNode() {
         const viewCenter = getSvgPoint(window.innerWidth / 2, window.innerHeight / 2);
         const id = getNextId();
-        state.diagram.nodes.push({
+        const newNode = {
             id, x: viewCenter.x, y: viewCenter.y, name: `ノード`,
             imageUrl: null, color: '#4f46e5', size: 40, textColor: '#333333',
             shape: 'circle', backgroundColor: '#ffffff', imageDisplayMode: 'clip'
-        });
+        };
+        state.diagram.nodes.push(newNode);
+        log('INFO', 'ノードを作成しました。', newNode);
 
         const isGroupSelected = [...state.selectedItems].some(id => state.diagram.groups.some(g => g.id === id));
         if (!isGroupSelected) {
@@ -1239,36 +1264,46 @@ function handleSidebarChange(e) {
             state.selectedItems.add(id);
         }
         
-        saveState();
+        saveState('create node');
         render();
     }
 
     function createLink(sourceId, targetId) {
         if (state.diagram.links.some(l => l.source === sourceId && l.target === targetId)) return;
         const id = getNextId();
-        state.diagram.links.push({
+        const newLink = {
             id, source: sourceId, target: targetId, text: '',
             color: '#333333', style: 'solid', shape: 'straight', arrow: 'to', textColor: '#333333'
-        });
+        };
+        state.diagram.links.push(newLink);
+        log('INFO', '線を作成しました。', newLink);
         state.selectedItems.clear();
         state.selectedItems.add(id);
-        saveState();
+        saveState('create link');
         render();
     }
 
     function createGroup() {
         const selectedNodeIds = [...state.selectedItems].filter(id => state.diagram.nodes.some(n => n.id === id));
-        if (selectedNodeIds.length < 1) return;
+        if (selectedNodeIds.length < 1) {
+            log('WARN', 'グループ化するノードが選択されていません。');
+            return;
+        }
         const id = getNextId();
-        state.diagram.groups.push({ id, nodeIds: selectedNodeIds, name: `グループ`, color: '#ffc107' });
+        const newGroup = { id, nodeIds: selectedNodeIds, name: `グループ`, color: '#ffc107' };
+        state.diagram.groups.push(newGroup);
+        log('INFO', 'グループを作成しました。', newGroup);
         state.selectedItems.clear();
         state.selectedItems.add(id);
-        saveState();
+        saveState('create group');
         render();
     }
 
     function deleteSelectedItems() {
         const idsToDelete = new Set(state.selectedItems);
+        if (idsToDelete.size === 0) return;
+        log('INFO', `${idsToDelete.size}個のアイテムを削除します。`, [...idsToDelete]);
+
         state.diagram.nodes = state.diagram.nodes.filter(n => !idsToDelete.has(n.id));
         state.diagram.groups = state.diagram.groups.filter(g => !idsToDelete.has(g.id));
         state.diagram.links = state.diagram.links.filter(l => !idsToDelete.has(l.id));
@@ -1280,15 +1315,16 @@ function handleSidebarChange(e) {
         
         state.selectedItems.clear();
         hideContextMenu();
-        saveState();
+        saveState('delete items');
         clearDomCache();
         render();
     }
     
-    async function exportProject() { const button = exportProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>保存中...`; try { const zip = new JSZip(); const imagesFolder = zip.folder("images"); const exportState = JSON.parse(JSON.stringify(state)); exportState.diagram.nodes.forEach(node => { if (node.imageUrl && node.imageUrl.startsWith('data:image')) { const dataUrl = node.imageUrl; const mimeTypeMatch = dataUrl.match(/data:(.*);base64,/); if (!mimeTypeMatch) return; const mimeType = mimeTypeMatch[1]; const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1); const extension = mimeType.split('/')[1] || 'png'; const fileName = `image_${node.id}.${extension}`; imagesFolder.file(fileName, base64Data, { base64: true }); node.imageUrl = `images/${fileName}`; } }); const dataToSave = { version: '1.0-zip', diagram: exportState.diagram, view: exportState.view, }; zip.file("data.json", JSON.stringify(dataToSave, null, 2)); const content = await zip.generateAsync({ type: "blob" }); const a = document.createElement("a"); a.href = URL.createObjectURL(content); a.download = `相関図プロジェクト_${new Date().toLocaleString('sv').replace(/[\/ :]/g, '-')}.zip`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); } catch (error) { console.error("プロジェクトのエクスポートに失敗しました:", error); alert("プロジェクトのエクスポートに失敗しました。"); } finally { button.disabled = false; button.innerHTML = originalHtml; } }
-    async function importProject(e) { const file = e.target.files[0]; if (!file) return; const button = importProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>読込中...`; try { const zip = await JSZip.loadAsync(file); const dataFile = zip.file("data.json"); if (!dataFile) { throw new Error("ZIPファイル内にdata.jsonが見つかりません。"); } const content = await dataFile.async("string"); const loadedData = JSON.parse(content); const imagePromises = loadedData.diagram.nodes.map(async (node) => { if (node.imageUrl && node.imageUrl.startsWith('images/')) { const imageFile = zip.file(node.imageUrl); if (imageFile) { const base64Data = await imageFile.async("base64"); const fileExtension = node.imageUrl.split('.').pop().toLowerCase(); const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`; node.imageUrl = `data:${mimeType};base64,${base64Data}`; } else { node.imageUrl = null; } } }); await Promise.all(imagePromises); state.diagram = loadedData.diagram; state.view = loadedData.view || { x: 0, y: 0, k: 1 }; state.selectedItems.clear(); state.history = []; state.redoStack = []; saveState(false); clearDomCache(); render(); alert("プロジェクトを正常に読み込みました。"); } catch (error) { console.error("プロジェクトのインポートに失敗しました:", error); alert(`プロジェクトのインポートに失敗しました: ${error.message}`); } finally { e.target.value = ''; button.disabled = false; button.innerHTML = originalHtml; } }
+    async function exportProject() { log('INFO', 'プロジェクトのエクスポートを開始します。'); const button = exportProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>保存中...`; try { const zip = new JSZip(); const imagesFolder = zip.folder("images"); const exportState = JSON.parse(JSON.stringify(state)); exportState.diagram.nodes.forEach(node => { if (node.imageUrl && node.imageUrl.startsWith('data:image')) { const dataUrl = node.imageUrl; const mimeTypeMatch = dataUrl.match(/data:(.*);base64,/); if (!mimeTypeMatch) return; const mimeType = mimeTypeMatch[1]; const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1); const extension = mimeType.split('/')[1] || 'png'; const fileName = `image_${node.id}.${extension}`; imagesFolder.file(fileName, base64Data, { base64: true }); node.imageUrl = `images/${fileName}`; } }); const dataToSave = { version: '1.0-zip', diagram: exportState.diagram, view: exportState.view, }; zip.file("data.json", JSON.stringify(dataToSave, null, 2)); const content = await zip.generateAsync({ type: "blob" }); const a = document.createElement("a"); a.href = URL.createObjectURL(content); a.download = `相関図プロジェクト_${new Date().toLocaleString('sv').replace(/[\/ :]/g, '-')}.zip`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); log('INFO', 'プロジェクトのエクスポートに成功しました。'); } catch (error) { log('ERROR', 'プロジェクトのエクスポートに失敗しました。', error); alert("プロジェクトのエクスポートに失敗しました。"); } finally { button.disabled = false; button.innerHTML = originalHtml; } }
+    async function importProject(e) { const file = e.target.files[0]; if (!file) return; log('INFO', 'プロジェクトのインポートを開始します。', { name: file.name, size: file.size }); const button = importProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>読込中...`; try { const zip = await JSZip.loadAsync(file); const dataFile = zip.file("data.json"); if (!dataFile) { throw new Error("ZIPファイル内にdata.jsonが見つかりません。"); } const content = await dataFile.async("string"); const loadedData = JSON.parse(content); const imagePromises = loadedData.diagram.nodes.map(async (node) => { if (node.imageUrl && node.imageUrl.startsWith('images/')) { const imageFile = zip.file(node.imageUrl); if (imageFile) { const base64Data = await imageFile.async("base64"); const fileExtension = node.imageUrl.split('.').pop().toLowerCase(); const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`; node.imageUrl = `data:${mimeType};base64,${base64Data}`; } else { log('WARN', `画像ファイルが見つかりません: ${node.imageUrl}`); node.imageUrl = null; } } }); await Promise.all(imagePromises); state.diagram = loadedData.diagram; state.view = loadedData.view || { x: 0, y: 0, k: 1 }; state.selectedItems.clear(); state.history = []; state.redoStack = []; saveState('project import', false); clearDomCache(); render(); log('INFO', 'プロジェクトを正常に読み込みました。'); alert("プロジェクトを正常に読み込みました。"); } catch (error) { log('ERROR', 'プロジェクトのインポートに失敗しました。', error); alert(`プロジェクトのインポートに失敗しました: ${error.message}`); } finally { e.target.value = ''; button.disabled = false; button.innerHTML = originalHtml; } }
     
     async function exportPNG() {
+        log('INFO', 'PNGエクスポートを開始します。');
         const exportBtn = document.getElementById('export-png-btn');
         const originalText = exportBtn.innerHTML;
         exportBtn.disabled = true;
@@ -1304,6 +1340,7 @@ function handleSidebarChange(e) {
             svg.removeChild(contentLayer);
     
             if (bbox.width === 0 && bbox.height === 0) {
+                log('WARN', 'エクスポートする内容がありません。');
                 alert("エクスポートする内容がありません。");
                 return;
             }
@@ -1362,7 +1399,7 @@ function handleSidebarChange(e) {
             };
     
             img.onerror = function(e) {
-                console.error("PNGエクスポート用のSVG画像の読み込みに失敗しました。", e);
+                log('ERROR', "PNGエクスポート用のSVG画像の読み込みに失敗しました。", e);
                 alert("PNGエクスポートに失敗しました。");
                 URL.revokeObjectURL(url);
             };
@@ -1370,7 +1407,7 @@ function handleSidebarChange(e) {
             img.src = url;
     
         } catch (error) {
-            console.error("PNGエクスポート中にエラーが発生しました:", error);
+            log('ERROR', "PNGエクスポート中にエラーが発生しました:", error);
             alert("PNGエクスポート中にエラーが発生しました。");
         } finally {
             exportBtn.disabled = false;
@@ -1386,6 +1423,7 @@ function handleSidebarChange(e) {
     }
 
     function init() {
+        log('INFO', 'アプリケーションを初期化しています...');
         addNodeBtn.addEventListener('click', createNode);
         undoBtn.addEventListener('click', undo);
         redoBtn.addEventListener('click', redo);
@@ -1414,7 +1452,7 @@ function handleSidebarChange(e) {
 
             if(nodeIdToAdd && group) {
                 group.nodeIds.push(nodeIdToAdd);
-                saveState();
+                saveState('add node to group');
                 render();
             }
         });
@@ -1458,9 +1496,10 @@ function handleSidebarChange(e) {
         });
         
         if (!loadFromLocalStorage()) {
-            saveState();
+            saveState('initial state');
         }
         render();
+        log('INFO', '初期化が完了しました。');
     }
 
     init();
