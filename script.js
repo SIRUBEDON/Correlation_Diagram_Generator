@@ -720,10 +720,15 @@
     }
 
 function updateSidebar() {
+    // --- パネルと入力欄の初期化 ---
     nodeSettings.classList.add('hidden');
     linkSettings.classList.add('hidden');
     groupSettings.classList.add('hidden');
+    nodeNameInput.disabled = false;
+    linkTextInput.disabled = false;
+    groupNameInput.disabled = false;
 
+    // --- 選択状態のチェック ---
     if (state.selectedItems.size === 0) {
         editPanel.classList.add('hidden');
         noSelectionPanel.classList.remove('hidden');
@@ -733,66 +738,107 @@ function updateSidebar() {
     editPanel.classList.remove('hidden');
     noSelectionPanel.classList.add('hidden');
 
-    const firstSelectedId = state.selectedItems.values().next().value;
-    const node = state.diagram.nodes.find(n => n.id === firstSelectedId);
-    const link = state.diagram.links.find(l => l.id === firstSelectedId);
-    const group = state.diagram.groups.find(g => g.id === firstSelectedId);
+    // --- 選択アイテムの分類 ---
+    const selectedIds = [...state.selectedItems];
+    const firstSelectedId = selectedIds[0];
+    const areAllNodes = selectedIds.every(id => state.diagram.nodes.some(n => n.id === id));
+    const areAllLinks = selectedIds.every(id => state.diagram.links.some(l => l.id === id));
+    const areAllGroups = selectedIds.every(id => state.diagram.groups.some(g => g.id === id));
 
-    if (state.selectedItems.size > 1) {
-         editPanelTitle.textContent = `${state.selectedItems.size}項目を選択中`;
-         addNodeToGroupSection.classList.add('hidden');
-    } else if (node) {
-        editPanelTitle.textContent = 'ノード設定';
-        nodeSettings.classList.remove('hidden');
-        if (document.activeElement !== nodeNameInput) {
-            nodeNameInput.value = node.name;
+    // --- UIの更新 ---
+    if (selectedIds.length > 1) {
+        editPanelTitle.textContent = `${selectedIds.length}項目を選択中`;
+        addNodeToGroupSection.classList.add('hidden');
+
+        if (areAllNodes) {
+            const firstNode = state.diagram.nodes.find(n => n.id === firstSelectedId);
+            nodeSettings.classList.remove('hidden');
+            
+            nodeNameInput.value = '(複数選択)';
+            nodeNameInput.disabled = true;
+            
+            syncColorInputs(nodeColorInput, nodeColorCodeInput, firstNode.color);
+            nodeSizeInput.value = firstNode.size;
+            syncColorInputs(nodeTextColorInput, nodeTextColorCodeInput, firstNode.textColor || '#333333');
+            nodeShapeInput.value = firstNode.shape || 'circle';
+            syncColorInputs(nodeBgColorInput, nodeBgColorCodeInput, firstNode.backgroundColor || '#ffffff');
+            nodeImageDisplayInput.value = firstNode.imageDisplayMode || 'clip';
+
+        } else if (areAllLinks) {
+            const firstLink = state.diagram.links.find(l => l.id === firstSelectedId);
+            linkSettings.classList.remove('hidden');
+
+            linkTextInput.value = '(複数選択)';
+            linkTextInput.disabled = true;
+
+            syncColorInputs(linkColorInput, linkColorCodeInput, firstLink.color);
+            linkStyleInput.value = firstLink.style;
+            linkShapeInput.value = firstLink.shape;
+            linkArrowInput.value = firstLink.arrow;
+            linkCurvatureInput.value = firstLink.curvature ?? 0.25;
+            syncColorInputs(linkTextColorInput, linkTextColorCodeInput, firstLink.textColor || '#333333');
+            linkTextSizeInput.value = firstLink.textSize || 14;
         }
-        syncColorInputs(nodeColorInput, nodeColorCodeInput, node.color);
-        nodeSizeInput.value = node.size;
-        syncColorInputs(nodeTextColorInput, nodeTextColorCodeInput, node.textColor || '#333333');
-        nodeShapeInput.value = node.shape || 'circle';
-        syncColorInputs(nodeBgColorInput, nodeBgColorCodeInput, node.backgroundColor || '#ffffff');
-        nodeImageDisplayInput.value = node.imageDisplayMode || 'clip';
-    } else if (link) {
-        editPanelTitle.textContent = '線設定';
-        linkSettings.classList.remove('hidden');
-        linkTextInput.value = link.text;
-        syncColorInputs(linkColorInput, linkColorCodeInput, link.color);
-        linkStyleInput.value = link.style;
-        const hasReverseLink = state.diagram.links.some(l => l.id !== link.id && l.source === link.target && l.target === link.source);
-        linkShapeInput.value = (link.shape === 'curved' || hasReverseLink) ? 'curved' : 'straight';
-        linkArrowInput.value = link.arrow;
-        linkCurvatureInput.value = link.curvature ?? 0.25;
-        syncColorInputs(linkTextColorInput, linkTextColorCodeInput, link.textColor || '#333333');
-        linkTextSizeInput.value = link.textSize || 14;
-    } else if (group) {
-        editPanelTitle.textContent = 'グループ設定';
-        groupSettings.classList.remove('hidden');
-        groupNameInput.value = group.name;
-        syncColorInputs(groupColorInput, groupColorCodeInput, group.color);
+        // グループや混合選択の場合は設定パネルは表示しない
 
-        const nodesInGroup = new Set(group.nodeIds);
-        const availableNodes = state.diagram.nodes.filter(n => !nodesInGroup.has(n.id));
-        
-        addNodeToGroupSelect.innerHTML = '';
+    } else if (selectedIds.length === 1) {
+        const node = state.diagram.nodes.find(n => n.id === firstSelectedId);
+        const link = state.diagram.links.find(l => l.id === firstSelectedId);
+        const group = state.diagram.groups.find(g => g.id === firstSelectedId);
 
-        if (availableNodes.length > 0) {
-            availableNodes.forEach(n => {
-                const option = document.createElement('option');
-                option.value = n.id;
-                option.textContent = n.name || `(無題ノード)`;
-                addNodeToGroupSelect.appendChild(option);
-            });
+        if (node) {
+            editPanelTitle.textContent = 'ノード設定';
+            nodeSettings.classList.remove('hidden');
+            if (document.activeElement !== nodeNameInput) {
+                nodeNameInput.value = node.name;
+            }
+            syncColorInputs(nodeColorInput, nodeColorCodeInput, node.color);
+            nodeSizeInput.value = node.size;
+            syncColorInputs(nodeTextColorInput, nodeTextColorCodeInput, node.textColor || '#333333');
+            nodeShapeInput.value = node.shape || 'circle';
+            syncColorInputs(nodeBgColorInput, nodeBgColorCodeInput, node.backgroundColor || '#ffffff');
+            nodeImageDisplayInput.value = node.imageDisplayMode || 'clip';
+        } else if (link) {
+            editPanelTitle.textContent = '線設定';
+            linkSettings.classList.remove('hidden');
+            linkTextInput.value = link.text;
+            syncColorInputs(linkColorInput, linkColorCodeInput, link.color);
+            linkStyleInput.value = link.style;
+            const hasReverseLink = state.diagram.links.some(l => l.id !== link.id && l.source === link.target && l.target === link.source);
+            linkShapeInput.value = (link.shape === 'curved' || hasReverseLink) ? 'curved' : 'straight';
+            linkArrowInput.value = link.arrow;
+            linkCurvatureInput.value = link.curvature ?? 0.25;
+            syncColorInputs(linkTextColorInput, linkTextColorCodeInput, link.textColor || '#333333');
+            linkTextSizeInput.value = link.textSize || 14;
+        } else if (group) {
+            editPanelTitle.textContent = 'グループ設定';
+            groupSettings.classList.remove('hidden');
+            groupNameInput.value = group.name;
+            syncColorInputs(groupColorInput, groupColorCodeInput, group.color);
+
+            const nodesInGroup = new Set(group.nodeIds);
+            const availableNodes = state.diagram.nodes.filter(n => !nodesInGroup.has(n.id));
             
-            addNodeToGroupSelect.selectedIndex = 0;
-            
-            addNodeToGroupSection.classList.remove('hidden');
-            addNodeToGroupBtn.disabled = false;
-            addNodeToGroupMessage.textContent = '';
-        } else {
-            addNodeToGroupSection.classList.add('hidden');
-            addNodeToGroupBtn.disabled = true;
-            addNodeToGroupMessage.textContent = '追加できるノードがありません。';
+            addNodeToGroupSelect.innerHTML = '';
+
+            if (availableNodes.length > 0) {
+                availableNodes.forEach(n => {
+                    const option = document.createElement('option');
+                    option.value = n.id;
+                    option.textContent = n.name || `(無題ノード)`;
+                    addNodeToGroupSelect.appendChild(option);
+                });
+                
+                addNodeToGroupSelect.selectedIndex = 0;
+                
+                addNodeToGroupSection.classList.remove('hidden');
+                addNodeToGroupBtn.disabled = false;
+                addNodeToGroupMessage.textContent = '';
+            } else {
+                addNodeToGroupSection.classList.add('hidden');
+                addNodeToGroupBtn.disabled = true;
+                addNodeToGroupMessage.textContent = '追加できるノードがありません。';
+            }
         }
     }
 }
@@ -1042,7 +1088,9 @@ function handleSidebarChange(e) {
     selectedIds.forEach(id => {
         const node = state.diagram.nodes.find(n => n.id === id);
         if (node) {
-            node.name = nodeNameInput.value;
+            if (!nodeNameInput.disabled) {
+                node.name = nodeNameInput.value;
+            }
             node.color = nodeColorInput.value;
             node.size = parseInt(nodeSizeInput.value);
             node.textColor = nodeTextColorInput.value;
@@ -1052,7 +1100,9 @@ function handleSidebarChange(e) {
         }
         const link = state.diagram.links.find(l => l.id === id);
         if (link) {
-            link.text = linkTextInput.value;
+            if (!linkTextInput.disabled) {
+                link.text = linkTextInput.value;
+            }
             link.color = linkColorInput.value;
             link.style = linkStyleInput.value;
             link.shape = linkShapeInput.value;
@@ -1063,7 +1113,9 @@ function handleSidebarChange(e) {
         }
         const group = state.diagram.groups.find(g => g.id === id);
         if (group) {
-            group.name = groupNameInput.value;
+            if (!groupNameInput.disabled) {
+                group.name = groupNameInput.value;
+            }
             group.color = groupColorInput.value;
         }
     });
@@ -1080,7 +1132,7 @@ function handleSidebarChange(e) {
     if (targetElement.id !== 'add-node-to-group-select') {
         render();
     }
-}    
+}
     const debouncedHandleSidebarChange = debounce(() => {
         saveState('sidebar change');
     }, 500);
