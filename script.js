@@ -30,6 +30,7 @@
     const linkArrowInput = document.getElementById('link-arrow');
     const linkCurvatureInput = document.getElementById('link-curvature');
     const linkTextColorInput = document.getElementById('link-text-color');
+    const linkTextSizeInput = document.getElementById('link-text-size');
     const linkColorCodeInput = document.getElementById('link-color-code');
     const linkTextColorCodeInput = document.getElementById('link-text-color-code');
 
@@ -639,6 +640,7 @@
                     text.appendChild(textElement);
                 }
                 textElement.setAttribute('fill', link.textColor || '#333');
+                textElement.setAttribute('font-size', `${link.textSize || 14}px`);
                 textElement.textContent = link.text;
             } else if (text) {
                 text.remove();
@@ -762,6 +764,7 @@ function updateSidebar() {
         linkArrowInput.value = link.arrow;
         linkCurvatureInput.value = link.curvature ?? 0.25;
         syncColorInputs(linkTextColorInput, linkTextColorCodeInput, link.textColor || '#333333');
+        linkTextSizeInput.value = link.textSize || 14;
     } else if (group) {
         editPanelTitle.textContent = 'グループ設定';
         groupSettings.classList.remove('hidden');
@@ -1056,6 +1059,7 @@ function handleSidebarChange(e) {
             link.arrow = linkArrowInput.value;
             link.curvature = parseFloat(linkCurvatureInput.value);
             link.textColor = linkTextColorInput.value;
+            link.textSize = parseInt(linkTextSizeInput.value);
         }
         const group = state.diagram.groups.find(g => g.id === id);
         if (group) {
@@ -1277,7 +1281,7 @@ function handleSidebarChange(e) {
         const newLink = {
             id, source: sourceId, target: targetId, text: '',
             color: '#333333', style: 'solid', shape: 'straight', arrow: 'to', textColor: '#333333',
-            curvature: 0.25
+            curvature: 0.25, textSize: 14
         };
         state.diagram.links.push(newLink);
         log('INFO', '線を作成しました。', newLink);
