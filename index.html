@@ -89,10 +89,7 @@
                 </div>
                 <div>
                     <label>アイコン画像:</label>
-                    <div class="flex space-x-2">
-                        <button id="upload-image-btn" class="btn btn-secondary w-full text-sm !bg-gray-200 !text-gray-700 hover:!bg-gray-300" title="画像ファイルをアップロード"><i class="fas fa-upload mr-2"></i>ファイルを選択</button>
-                        <button id="edit-image-btn" class="btn btn-secondary text-sm !px-3" title="画像の位置やサイズを調整"><i class="fas fa-crop-alt"></i></button>
-                    </div>
+                    <button id="upload-image-btn" class="btn btn-secondary w-full text-sm !bg-gray-200 !text-gray-700 hover:!bg-gray-300">ファイルを選択...</button>
                 </div>
                 <div>
                     <label for="node-image-display">画像表示形式:</label>
@@ -176,6 +173,10 @@
                         <option value="straight">直線</option>
                         <option value="curved">曲線</option>
                     </select>
+                </div>
+                <div>
+                    <label for="link-curvature">曲率:</label>
+                    <input type="range" id="link-curvature" min="0" max="1" step="0.05" value="0.25">
                 </div>
                 <div>
                     <label for="link-arrow">矢印:</label>
@@ -284,23 +285,5 @@
 
     <!-- 外部JavaScriptファイルの読み込み -->
     <script src="script.js"></script>
-
-    <!-- 画像編集モーダル -->
-    <div id="image-editor-modal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <h2 class="text-xl font-bold mb-4">画像の位置を調整</h2>
-            <div id="image-editor-preview" class="preview-container">
-                <!-- ここにプレビュー画像が表示される -->
-            </div>
-            <div class="mt-4">
-                <label for="image-zoom-slider" class="block mb-1 text-sm font-medium text-gray-700">ズーム:</label>
-                <input type="range" id="image-zoom-slider" min="1" max="5" step="0.05" value="1" class="w-full">
-            </div>
-            <div class="mt-6 flex justify-end space-x-2">
-                <button id="cancel-image-edit-btn" class="btn btn-secondary">キャンセル</button>
-                <button id="save-image-edit-btn" class="btn btn-primary">保存</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
