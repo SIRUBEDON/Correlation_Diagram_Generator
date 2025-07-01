@@ -757,7 +757,8 @@ function updateSidebar() {
         linkTextInput.value = link.text;
         syncColorInputs(linkColorInput, linkColorCodeInput, link.color);
         linkStyleInput.value = link.style;
-        linkShapeInput.value = link.shape;
+        const hasReverseLink = state.diagram.links.some(l => l.id !== link.id && l.source === link.target && l.target === link.source);
+        linkShapeInput.value = (link.shape === 'curved' || hasReverseLink) ? 'curved' : 'straight';
         linkArrowInput.value = link.arrow;
         linkCurvatureInput.value = link.curvature ?? 0.25;
         syncColorInputs(linkTextColorInput, linkTextColorCodeInput, link.textColor || '#333333');
