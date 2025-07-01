@@ -701,8 +701,21 @@
                 text.setAttribute('class', 'group-label');
                 g.appendChild(text);
             }
+
+            // --- 入れ子レベルの計算 ---
+            let nestLevel = 0;
+            sortedGroups.forEach(({ group: otherGroup, bbox: otherBbox }) => {
+                if (group.id !== otherGroup.id &&
+                    bbox.x > otherBbox.x && bbox.y > otherBbox.y &&
+                    (bbox.x + bbox.width) < (otherBbox.x + otherBbox.width) &&
+                    (bbox.y + bbox.height) < (otherBbox.y + otherBbox.height)) {
+                    nestLevel++;
+                }
+            });
+
+            const textYOffset = 20 * (nestLevel + 1);
             text.setAttribute('x', bbox.x - padding + 10);
-            text.setAttribute('y', bbox.y - padding + 20);
+            text.setAttribute('y', bbox.y - padding + textYOffset);
             text.setAttribute('fill', group.color);
             text.textContent = group.name;
 
