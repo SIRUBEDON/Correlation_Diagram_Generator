@@ -533,9 +533,8 @@
             if (state.selectedItems.has(link.id)) g.classList.add('selected');
             else g.classList.remove('selected');
             
-            const hasReverseLink = state.diagram.links.some(l => 
-                l.id !== link.id && l.source === link.target && l.target === link.source &&
-                l.arrow !== 'both' && link.arrow !== 'both'
+            const hasReverseLink = state.diagram.links.some(l =>
+                l.id !== link.id && l.source === link.target && l.target === link.source
             );
 
             const isCurved = link.shape === 'curved' || hasReverseLink;
