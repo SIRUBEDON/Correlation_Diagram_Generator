@@ -46,6 +46,7 @@
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
     const groupBtn = document.getElementById('group-btn');
+    const gridAlignBtn = document.getElementById('grid-align-btn');
     const deleteBtn = document.getElementById('delete-btn');
     const uploadImageBtn = document.getElementById('upload-image-btn');
     const exportPngBtn = document.getElementById('export-png-btn');
@@ -1393,6 +1394,29 @@ function handleSidebarChange(e) {
         render();
     }
     
+    function alignToGrid() {
+       const nodesToAlign = state.selectedItems.size > 0
+           ? state.diagram.nodes.filter(n => state.selectedItems.has(n.id))
+           : state.diagram.nodes;
+
+       if (nodesToAlign.length === 0) {
+           log('INFO', '整列対象のノードがありません。');
+           return;
+       }
+
+       const avgSize = nodesToAlign.reduce((sum, n) => sum + n.size, 0) / nodesToAlign.length;
+       const gridSize = Math.max(100, avgSize * 3);
+
+       nodesToAlign.forEach(node => {
+           node.x = Math.round(node.x / gridSize) * gridSize;
+           node.y = Math.round(node.y / gridSize) * gridSize;
+       });
+
+       log('INFO', `${nodesToAlign.length}個のノードをグリッドに整列しました。`);
+       saveState('grid align');
+       render();
+   }
+    
     async function exportProject() { log('INFO', 'プロジェクトのエクスポートを開始します。'); const button = exportProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>保存中...`; try { const zip = new JSZip(); const imagesFolder = zip.folder("images"); const exportState = JSON.parse(JSON.stringify(state)); exportState.diagram.nodes.forEach(node => { if (node.imageUrl && node.imageUrl.startsWith('data:image')) { const dataUrl = node.imageUrl; const mimeTypeMatch = dataUrl.match(/data:(.*);base64,/); if (!mimeTypeMatch) return; const mimeType = mimeTypeMatch[1]; const base64Data = dataUrl.substring(dataUrl.indexOf(',') + 1); const extension = mimeType.split('/')[1] || 'png'; const fileName = `image_${node.id}.${extension}`; imagesFolder.file(fileName, base64Data, { base64: true }); node.imageUrl = `images/${fileName}`; } }); const dataToSave = { version: '1.0-zip', diagram: exportState.diagram, view: exportState.view, }; zip.file("data.json", JSON.stringify(dataToSave, null, 2)); const content = await zip.generateAsync({ type: "blob" }); const a = document.createElement("a"); a.href = URL.createObjectURL(content); a.download = `相関図プロジェクト_${new Date().toLocaleString('sv').replace(/[\/ :]/g, '-')}.zip`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); log('INFO', 'プロジェクトのエクスポートに成功しました。'); } catch (error) { log('ERROR', 'プロジェクトのエクスポートに失敗しました。', error); alert("プロジェクトのエクスポートに失敗しました。"); } finally { button.disabled = false; button.innerHTML = originalHtml; } }
     async function importProject(e) { const file = e.target.files[0]; if (!file) return; log('INFO', 'プロジェクトのインポートを開始します。', { name: file.name, size: file.size }); const button = importProjectBtn; const originalHtml = button.innerHTML; button.disabled = true; button.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>読込中...`; try { const zip = await JSZip.loadAsync(file); const dataFile = zip.file("data.json"); if (!dataFile) { throw new Error("ZIPファイル内にdata.jsonが見つかりません。"); } const content = await dataFile.async("string"); const loadedData = JSON.parse(content); const imagePromises = loadedData.diagram.nodes.map(async (node) => { if (node.imageUrl && node.imageUrl.startsWith('images/')) { const imageFile = zip.file(node.imageUrl); if (imageFile) { const base64Data = await imageFile.async("base64"); const fileExtension = node.imageUrl.split('.').pop().toLowerCase(); const mimeType = `image/${fileExtension === 'jpg' ? 'jpeg' : fileExtension}`; node.imageUrl = `data:${mimeType};base64,${base64Data}`; } else { log('WARN', `画像ファイルが見つかりません: ${node.imageUrl}`); node.imageUrl = null; } } }); await Promise.all(imagePromises); state.diagram = loadedData.diagram; state.view = loadedData.view || { x: 0, y: 0, k: 1 }; state.selectedItems.clear(); state.history = []; state.redoStack = []; saveState('project import', false); clearDomCache(); render(); log('INFO', 'プロジェクトを正常に読み込みました。'); alert("プロジェクトを正常に読み込みました。"); } catch (error) { log('ERROR', 'プロジェクトのインポートに失敗しました。', error); alert(`プロジェクトのインポートに失敗しました: ${error.message}`); } finally { e.target.value = ''; button.disabled = false; button.innerHTML = originalHtml; } }
     
@@ -1502,6 +1526,7 @@ function handleSidebarChange(e) {
         redoBtn.addEventListener('click', redo);
         deleteBtn.addEventListener('click', deleteSelectedItems);
         groupBtn.addEventListener('click', createGroup);
+        gridAlignBtn.addEventListener('click', alignToGrid);
         exportPngBtn.addEventListener('click', exportPNG);
         imageUploadInput.addEventListener('change', handleImageUpload);
         uploadImageBtn.addEventListener('click', () => {
